@@ -145,7 +145,10 @@ function Dimo() {
   playersRef.current = players;
   const fieldSlotsRef = useRef<string[][]>([]);
   fieldSlotsRef.current = fieldSlots;
-
+  const dimoSlotsRef = useRef<number>(0);
+  dimoSlotsRef.current = dimoSlots;
+  const statusRef = useRef<string>('init');
+  statusRef.current = status;
   const difficultyLevels = ['Easy', 'Medium', 'Advanced'];
 
   function getNewCoord(c: number, min: number, max: number, direction: number) {
@@ -174,24 +177,23 @@ function Dimo() {
     );
   }
 
-  const takeOutActivePlayer = useRef(() => {
+  const takeOutActivePlayer = () => {
     const players = playersRef.current;
     const fieldSlots = fieldSlotsRef.current;
     const failed = players.failed + 1;
-    console.log(players);
+
     setPlayers({ ...players, failed });
     const curPlayers = players.total - failed - players.succeeded;
-    if (curPlayers < dimoSlots - players.succeeded) {
+    console.log(players, curPlayers);
+    if (curPlayers < dimoSlotsRef.current - players.succeeded) {
       setStatus('lost');
     } else if (curPlayers > 0) {
-      const nextI = 0;
-      const nextJ = curPlayers - 1;
-      setActivePlayer({ i: nextI, j: nextJ });
+      setActivePlayer({ i: 0, j: curPlayers - 1 });
       fieldSlots[0][curPlayers - 1] = '';
 
       onChange(fieldSlots);
     }
-  });
+  };
 
   const animateBalls = useCallback(
     (
@@ -199,12 +201,103 @@ function Dimo() {
       timeout: number,
       minMax: MinMaxType,
       activePlayer: { i: number; j: number },
+      start?: boolean,
     ) => {
       // change each balls position
       if (!balls) {
         return;
       }
-      const newBalls = balls.map(ball => {
+      const status = statusRef.current;
+      console.log('animate balls');
+      if (status === 'won') {
+        if (start === undefined) {
+          start = true;
+        }
+        start = animateWinning(start);
+      } else if (status === 'lost') {
+        if (start === undefined) {
+          start = true;
+        }
+        start = animateLosing(start);
+      } else {
+        const newBalls = balls.map(ball => {
+          const { newC: newX, newDirectionC: newDirectionX } = getNewCoord(
+            ball.x,
+            minMax.minX,
+            minMax.maxX,
+            ball.direction[0],
+          );
+          const { newC: newY, newDirectionC: newDirectionY } = getNewCoord(
+            ball.y,
+            minMax.minY,
+            minMax.maxY,
+            ball.direction[1],
+          );
+
+          if (
+            playerOnPath(
+              newX,
+              newY,
+              ball.radius,
+              activePlayer.j * 24,
+              activePlayer.i * 24,
+              24,
+              24,
+            )
+          ) {
+            takeOutActivePlayer();
+          }
+
+          return {
+            ...ball,
+            x: newX,
+            y: newY,
+            direction: [newDirectionX, newDirectionY],
+          };
+        });
+        //update balls
+
+        setBalls([...newBalls]);
+        // ballsRef.current = newBalls;
+        //call same function with time out
+      }
+      const timer = setTimeout(
+        () =>
+          animateBalls(
+            ballsRef.current ?? null,
+            timeout,
+            minMaxRef.current,
+            activePlayerRef.current,
+            start,
+          ),
+        timeout,
+      );
+      setTimer(timer);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [balls],
+  );
+
+  const animateWinning = (start: boolean) => {
+    let balls = ballsRef.current;
+    if (!balls || !balls.length) {
+      return;
+    }
+    const count = balls.length;
+    let minMax = minMaxRef.current;
+    let outOfbox = false;
+    const newBalls = balls.map((ball, index) => {
+      if (start) {
+        return {
+          ...ball,
+          x: minMax.maxX / 2,
+          y: minMax.maxY / 2,
+          direction: [
+            5 * Math.cos((2 * Math.PI * index) / count),
+            5 * Math.sin((2 * Math.PI * index) / count),
+          ],
+        };
+      } else {
         const { newC: newX, newDirectionC: newDirectionX } = getNewCoord(
           ball.x,
           minMax.minX,
@@ -218,47 +311,72 @@ function Dimo() {
           ball.direction[1],
         );
 
-        if (
-          playerOnPath(
-            newX,
-            newY,
-            ball.radius,
-            activePlayer.j * 24,
-            activePlayer.i * 24,
-            24,
-            24,
-          )
-        ) {
-          takeOutActivePlayer.current();
-        }
-
+        outOfbox =
+          outOfbox ||
+          newDirectionX !== ball.direction[0] ||
+          newDirectionY !== ball.direction[1];
+        //console.log(ball.direction, newDirectionX, newDirectionY, start);
         return {
           ...ball,
           x: newX,
           y: newY,
           direction: [newDirectionX, newDirectionY],
         };
-      });
-      //update balls
+      }
+    });
+    //update balls
+    start = start ? false : outOfbox;
+    setBalls([...newBalls]);
+    return start;
+  };
 
-      setBalls([...newBalls]);
-      ballsRef.current = newBalls;
-      //call same function with time out
-      const timer = setTimeout(
-        () =>
-          animateBalls(
-            ballsRef.current ?? null,
-            timeout,
-            minMaxRef.current,
-            activePlayerRef.current,
-          ),
-        timeout,
-      );
-      setTimer(timer);
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [balls],
-  );
+  const animateLosing = (start: boolean) => {
+    let balls = ballsRef.current;
+    if (!balls) {
+      return;
+    }
+    let minMax = minMaxRef.current;
+    let outOfbox = false;
+    const newBalls = balls.map((ball, index) => {
+      if (start) {
+        return {
+          ...ball,
+          x: minMax.minX + 40 * index,
+          y: minMax.minY,
+          direction: [5, 5],
+        };
+      } else {
+        const { newC: newX, newDirectionC: newDirectionX } = getNewCoord(
+          ball.x,
+          minMax.minX,
+          minMax.maxX,
+          ball.direction[0],
+        );
+        const { newC: newY, newDirectionC: newDirectionY } = getNewCoord(
+          ball.y,
+          minMax.minY,
+          minMax.maxY,
+          ball.direction[1],
+        );
+
+        outOfbox =
+          outOfbox ||
+          newDirectionX !== ball.direction[0] ||
+          newDirectionY !== ball.direction[1];
+        //console.log(ball.direction, newDirectionX, newDirectionY, start);
+        return {
+          ...ball,
+          x: newX,
+          y: newY,
+          direction: [newDirectionX, newDirectionY],
+        };
+      }
+    });
+    //update balls
+    start = start ? false : outOfbox;
+    setBalls([...newBalls]);
+    return start;
+  };
 
   useEffect(() => {
     if (fieldSlots.length === 0) {
@@ -279,14 +397,45 @@ function Dimo() {
   }, [fieldSlots.length]);
 
   useEffect(() => {
-    if (fieldSlots.length > 0 && minMax.maxX > 0) {
+    if (fieldSlots.length > 0 && minMax.maxX > 0 && status === 'new') {
       animateBalls(balls, 20, minMax, activePlayer);
     }
     return () => {
       if (timer != null) clearTimeout(timer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fieldSlots.length, minMax.maxX]);
+  }, [fieldSlots.length, minMax.maxX, status]);
+
+  useEffect(() => {
+    if (status === 'won') {
+      const newBalls = balls.map((ball, index) => {
+        return {
+          ...ball,
+          x: minMax.maxX / 2,
+          y: minMax.maxY / 2,
+          direction: [
+            5 * Math.cos((2 * Math.PI * index) / balls.length),
+            5 * Math.sin((2 * Math.PI * index) / balls.length),
+          ],
+        };
+      });
+      setBalls(newBalls);
+    } else if (status === 'lost') {
+      const newBalls = balls.map((ball, index) => {
+        return {
+          ...ball,
+          x: index * 40 + minMax.minX,
+          y: minMax.minY,
+          direction: [5, 5],
+        };
+      });
+      setBalls(newBalls);
+    }
+    return () => {
+      if (timer != null) clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
 
   function getRandomInt(max: number) {
     return Math.floor(Math.random() * Math.floor(max));
@@ -306,6 +455,7 @@ function Dimo() {
     setFieldSlots([]);
     setBalls([]);
     setMinMax({ minX: 0, minY: 0, maxX: 0, maxY: 0 });
+    setPlayers({ active: 0, failed: 0, succeeded: 0, total: 0 });
   };
   const generateField = () => {
     const dimoSlotsCount = Math.floor((difficulty * value) / 6);
@@ -325,7 +475,7 @@ function Dimo() {
       }
     }
     const balls = [];
-    const baseSpeed = 20;
+    const baseSpeed = 10;
     const speed = (difficulty * baseSpeed) / 3;
     for (let b = 0; b < ballsCount; b++) {
       balls.push({
@@ -333,7 +483,7 @@ function Dimo() {
         y: b * 40 + 40,
         radius: 20,
         color: getRandomColor(),
-        direction: [getRandomInt(speed) + 10, getRandomInt(speed) + 10],
+        direction: [getRandomInt(speed) + 3, getRandomInt(speed) + 3],
       });
     }
     setFieldSlots(slots);
@@ -374,7 +524,7 @@ function Dimo() {
       default:
         return `Keep going !!  ( Filled:${
           players.succeeded
-        },ToReveal:${dimoSlots - players.succeeded})`;
+        },ToFill:${dimoSlots - players.succeeded})`;
     }
   };
 
@@ -407,7 +557,7 @@ function Dimo() {
       if (succeeded === dimoSlots) {
         setStatus('won');
       }
-      const curPlayers = players.total - players.failed - players.succeeded;
+      const curPlayers = players.total - players.failed - succeeded;
       if (curPlayers > 0) {
         nextI = 0;
         nextJ = curPlayers - 1;
