@@ -35,7 +35,8 @@ const useStyles = makeStyles({
   mineContainer: {
     display: 'flex',
     width: 800,
-    height: 800,
+    minHeight: 800,
+    paddingBottom: 32,
     margin: 'auto',
     flexDirection: 'column',
     background: 'linear-gradient(to bottom right,#39CCCC, #01FF70)',
@@ -152,6 +153,9 @@ function MineSweeper() {
   };
 
   const getSlotClass = (slotVal: string) => {
+    if (slotVal === 'M' && status === 'lost') {
+      return classes.mineSlot;
+    }
     if (slotVal === 'E' || slotVal === 'M') {
       return classes.unrevealedSlot;
     }
@@ -178,6 +182,9 @@ function MineSweeper() {
   };
 
   const getDisplay = (slotVal: string) => {
+    if (slotVal === 'M' && status === 'lost') {
+      return 'X';
+    }
     if (slotVal === 'E' || slotVal === 'M' || slotVal === 'B') {
       return '';
     }

@@ -2,6 +2,7 @@ import React from 'react';
 
 import './App.css';
 import MineSweeper from './MineSweeper';
+import Dimo from './Dimo';
 
 import { makeStyles } from '@material-ui/core';
 
@@ -23,6 +24,7 @@ function App() {
     <div className='App'>
       <section className={classes.main}>
         <MineSweeper />
+        <Dimo />
       </section>
     </div>
   );
