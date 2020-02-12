@@ -3,6 +3,7 @@ import React from 'react';
 import './App.css';
 import MineSweeper from './MineSweeper';
 import Dimo from './Dimo';
+import ArrowGame from './ArrowGame';
 
 import { makeStyles } from '@material-ui/core';
 
@@ -25,6 +26,7 @@ function App() {
       <section className={classes.main}>
         <MineSweeper />
         <Dimo />
+        <ArrowGame />
       </section>
     </div>
   );
