@@ -173,7 +173,15 @@ function ArrowGame() {
   ) {
     for (let arrow of activeArrows) {
       if (
-        onPath(newX, newY, radius, arrow.x, arrow.y, arrow.height, arrow.width)
+        onPath(
+          newX,
+          newY,
+          radius,
+          arrow.x,
+          arrow.y,
+          0.1 * arrow.height,
+          arrow.width,
+        )
       ) {
         return true;
       }
@@ -222,6 +230,7 @@ function ArrowGame() {
             ...ball,
             direction: [0, 10],
             status: 'hit',
+            color: 'red',
           };
         }
         const { newC: newX, direction: newDirectionX } = getNewX(
@@ -266,6 +275,26 @@ function ArrowGame() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.status]);
+
+  useEffect(() => {
+    if (!state.balls.length) {
+      return;
+    }
+    if (state.status !== 'started') {
+      return;
+    }
+    const ballsHit = state.balls.filter(ball => ball.status === 'hit').length;
+    const remainingBalls = state.balls.length - ballsHit;
+    const remainingArrows = state.arrows.filter(
+      arrow => arrow.y > 0 && arrow.y < 800,
+    ).length;
+    if (remainingArrows < remainingBalls) {
+      setState({ ...state, status: 'lost' });
+    }
+    if (remainingBalls === 0) {
+      setState({ ...state, status: 'won' });
+    }
+  }, [state, state.arrows, state.balls, state.status]);
 
   // useEffect(() => {
   //   if (status === 'won') {
@@ -318,7 +347,7 @@ function ArrowGame() {
     if (!state) {
       return;
     }
-    const { totalBalls, difficulty, baseBallSpeed, baseArrowSpeed } = state;
+    const { totalBalls, difficulty, baseBallSpeed } = state;
     if (!totalBalls || totalBalls === 0 || !difficulty || !baseBallSpeed) {
       return;
     }
@@ -372,8 +401,8 @@ function ArrowGame() {
       case 'won':
         return 'Congratulations !!! You won !!!';
       default:
-        return `Keep going !!  ( Taken out:${state.totalBalls -
-          state.balls.length},Remaining:${state.balls.length})`;
+        return `Keep going !!  Balls Hit: ${ballsHit}, Remaining Balls: ${remainingBalls}, Remaining
+        Arrows: ${remainingArrows} `;
     }
   };
 
@@ -381,12 +410,14 @@ function ArrowGame() {
     if (!stateRef || !stateRef.current) {
       return;
     }
-    const { currentArrow, arrows } = stateRef.current;
+
+    const { currentArrow, arrows, baseArrowSpeed, status } = stateRef.current;
+
     const newArrows = arrows.map((arrow, index) => {
       if (index === currentArrow) {
         return {
           ...arrow,
-          direction: [0, -10],
+          direction: [0, -baseArrowSpeed],
         };
       } else if (index > currentArrow) {
         return {
@@ -398,7 +429,12 @@ function ArrowGame() {
       }
     });
 
-    setState({ ...state, arrows: newArrows, currentArrow: currentArrow + 1 });
+    setState({
+      ...state,
+      arrows: newArrows,
+      currentArrow: currentArrow + 1,
+      status: status === 'new' ? 'started' : status,
+    });
   };
 
   const handleKeyDown = (e: any) => {
@@ -407,6 +443,12 @@ function ArrowGame() {
     e.preventDefault();
     e.stopPropagation();
   };
+
+  const ballsHit = state.balls.filter(ball => ball.status === 'hit').length;
+  const remainingBalls = state.balls.length - ballsHit;
+  const remainingArrows = state.arrows.filter(
+    arrow => arrow.y > 0 && arrow.y < 800,
+  ).length;
 
   return (
     <>
