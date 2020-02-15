@@ -268,7 +268,7 @@ function MineSweeper() {
   return (
     <>
       <div className={classes.mineContainer}>
-        <header className={classes.header}>MineSweeper App</header>
+        <header className={classes.header}>MineSweeper Game</header>
         <Button
           color='primary'
           className={classes.btn}

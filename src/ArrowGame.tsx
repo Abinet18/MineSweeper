@@ -453,7 +453,7 @@ function ArrowGame() {
   return (
     <>
       <div className={classes.fieldContainer}>
-        <header className={classes.header}>Dimo App</header>
+        <header className={classes.header}>Arrow Game</header>
         <Button
           color='primary'
           className={classes.btn}

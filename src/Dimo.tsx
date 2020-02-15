@@ -596,7 +596,7 @@ function Dimo() {
   return (
     <>
       <div className={classes.fieldContainer}>
-        <header className={classes.header}>Dimo App</header>
+        <header className={classes.header}>Dimo Game</header>
         <Button
           color='primary'
           className={classes.btn}
